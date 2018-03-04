@@ -20,23 +20,21 @@
 
 bl_info = {
     "name": "3D Print Toolbox Modified",
-    "description": "Utilities for 3D printing with basic Mesh Clean Up "
-                   "based on '3D Print Toolbox' by Campbell Barton",
     "author": "Agnieszka Pas",
-    "version": (1, 3),
-    "blender": (2, 66, 0),
+    "version": (1, 4),
+    "blender": (2, 78, 0),
     "location": "3D View > Toolbox",
-    "warning": "",
-    "wiki_url": "",
-    "support": 'COMMUNITY',
-    "category": "Mesh"
+    "description": "Utilities for 3D printing with basic Mesh Clean Up " \
+                   "based on Campbell Barton's addon: '3D Print Toolbox'",
+    "wiki_url": "https://github.com/agapas/3d-print-toolbox-modified#readme",
+    "category": "Mesh",
 }
 
 
 if "bpy" in locals():
     import importlib
-    importlib.reload(ui)
     importlib.reload(operators)
+    importlib.reload(ui)
 else:
     import bpy
     from bpy.props import (
@@ -54,8 +52,8 @@ else:
         PropertyGroup,
     )
     from . import (
-        ui,
         operators,
+        ui,
     )
 
 import math
@@ -107,18 +105,38 @@ class Print3DSettings(PropertyGroup):
         subtype='ANGLE',
         default=math.radians(45.0),
         min=0.0, max=math.radians(180.0),
+        precision=1,
+        step=10,
     )
     angle_sharp = FloatProperty(
         name="Angle",
         subtype='ANGLE',
         default=math.radians(160.0),
         min=0.0, max=math.radians(180.0),
+        precision=1,
+        step=10,
     )
     angle_overhang = FloatProperty(
         name="Angle",
         subtype='ANGLE',
         default=math.radians(45.0),
         min=0.0, max=math.radians(90.0),
+        precision=1,
+        step=10,
+    )
+    material_density = FloatProperty(
+        name="Density",
+        description="Custom density value (kg/m^3)",
+        default=1.000000,
+        min=1.000000,
+        step=10,
+    )
+    unit_price = FloatProperty(
+        name="Unit Price",
+        description="Unit price of material (kg)",
+        default=1.00,
+        min=0.00,
+        step=1,
     )
 
 
@@ -180,6 +198,8 @@ classes = (
     operators.Print3DCleanTriangulateFaces,
     operators.Print3DCleanHoles,
     operators.Print3DCleanLimited,
+
+    operators.Print3DMaterialCost,
 
     operators.Print3DSelectReport,
     operators.Print3DCopyToClipboard,

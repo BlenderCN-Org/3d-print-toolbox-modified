@@ -47,17 +47,25 @@ def clean_float(text):
         text = head + tail
     return text
 
-def get_volume(text):
+
+# 'Material Unit Cost: 4.12195539 [³]'
+def get_value(text):
     value_index = text.rfind(":")
     if value_index != -1:
         value_index += 2
         text = text[value_index:]
+
+        bracket_index = text.rfind("[")
+        if bracket_index != -1:
+            bracket_index -= 1
+            text = text[:bracket_index]
 
         index = text.rfind(".")
         if index != -1:
             index += 9
             text = text[:index]
     return text
+
 
 # get count of vertices, edges and faces in the mesh
 def elem_count(context):
@@ -70,6 +78,15 @@ def setup_environment():
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_mode(type='VERT')
     bpy.ops.mesh.reveal()
+
+# get material unit cost based on given volume, density and unit price
+def get_material_cost(volume, density, price):
+    print("============================")
+    print(volume)
+    print(density)
+    print(price)
+    material_cost = get_value(density)
+    return material_cost
 
 
 # ---------
@@ -92,13 +109,13 @@ class Print3DInfoVolume(Operator):
 
         info = []
         if unit.system == 'METRIC':
-            info.append(("Volume: %s cm³" % clean_float("%.4f" %
+            info.append(("Volume: %s [cm³]" % clean_float("%.4f" %
                                                         ((volume * (scale ** 3.0)) / (0.01 ** 3.0))), None))
         elif unit.system == 'IMPERIAL':
-            info.append(("Volume: %s \"³" % clean_float("%.4f" %
+            info.append(("Volume: %s [\"³]" % clean_float("%.4f" %
                                                         ((volume * (scale ** 3.0)) / (0.0254 ** 3.0))), None))
         else:
-            info.append(("Volume: %s³" % clean_float("%.8f" % volume), None))
+            info.append(("Volume: %s [³]" % clean_float("%.8f" % volume), None))
 
         report.update(*info)
         return {'FINISHED'}
@@ -121,15 +138,55 @@ class Print3DInfoArea(Operator):
 
         info = []
         if unit.system == 'METRIC':
-            info.append(("Area: %s cm²" % clean_float("%.4f" %
+            info.append(("Area: %s [cm²]" % clean_float("%.4f" %
                                                       ((area * (scale ** 2.0)) / (0.01 ** 2.0))), None))
         elif unit.system == 'IMPERIAL':
-            info.append(("Area: %s \"²" % clean_float("%.4f" %
+            info.append(("Area: %s [\"²]" % clean_float("%.4f" %
                                                       ((area * (scale ** 2.0)) / (0.0254 ** 2.0))), None))
         else:
-            info.append(("Area: %s²" % clean_float("%.8f" % area), None))
+            info.append(("Area: %s [²]" % clean_float("%.8f" % area), None))
 
         report.update(*info)
+        return {'FINISHED'}
+
+
+# -----------------------------------
+# Material cost based on mesh volume
+
+class Print3DMaterialCost(Operator):
+    """Calculate cost of custom material with given volume, density and unit price"""
+    bl_idname = "mesh.print3d_calculate_cost"
+    bl_label = "Calculate"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    density = FloatProperty()
+    unit_price = FloatProperty()
+
+    def execute(self, context):
+        self.context = context
+        scene = context.scene
+        unit = scene.unit_settings
+        if unit.system == 'METRIC' or unit.system == 'IMPERIAL':
+            message = "%s Unit System detected. " \
+                "Material Cost calculation works only for Blender units." % unit.system
+            print(message)
+            self.report({'WARNING'}, message)
+            return {'CANCELLED'}
+
+        obj = context.active_object
+
+        bm = mesh_helpers.bmesh_copy_from_object(obj, apply_modifiers=True)
+        volume = bm.calc_volume()
+        bm.free()
+
+        volume = clean_float("%.8f" % volume)
+
+        cost = get_material_cost(volume, self.density, self.unit_price)
+
+        info = []
+        info.append(("Material Unit Cost: %s" % cost, None))
+        report.update(*info)
+
         return {'FINISHED'}
 
 
@@ -384,7 +441,7 @@ class Print3DCleanDegenerates(Operator):
         name="Merge Distance",
         description="Minimum distance between elements to merge",
         default=0.0001,
-        step=1
+        step=1,
     )
 
     def execute(self, context):
@@ -429,7 +486,7 @@ class Print3DCleanDoubles(Operator):
         name="Merge Distance",
         description="Minimum distance between elements to merge",
         default=0.0001,
-        step=1
+        step=1,
     )
 
     def execute(self, context):
@@ -649,7 +706,7 @@ class Print3DCleanHoles(Operator):
         name="Sides",
         description="Number of sides in hole required to fill (zero fills all holes)",
         default=4,
-        step=1
+        step=1,
     )
 
     def execute(self, context):
@@ -696,7 +753,7 @@ class Print3DCleanLimited(Operator):
         default=0.0872665,
         subtype="ANGLE",
         unit="ROTATION",
-        step=10
+        step=10,
     )
 
     use_boundaries = BoolProperty(
@@ -786,18 +843,21 @@ class Print3DSelectReport(Operator):
         return {'FINISHED'}
 
 
+# ---------------------------------------
+# Copy value from text to clipboard
+
 class Print3DCopyToClipboard(Operator):
-    """Copy the volume value to clipboard"""
+    """Copy the value to clipboard"""
     bl_idname = "mesh.print3d_copy_to_clipboard"
     bl_label = ""
     bl_options = {'REGISTER', 'UNDO'}
 
-    volume = StringProperty()
+    text = StringProperty()
 
     def execute(self, context):
-        volume = self.volume
-        if volume:
-            context.window_manager.clipboard = get_volume(volume)
+        if self.text:
+            text = self.text;
+            context.window_manager.clipboard = get_value(text)
 
         return {'FINISHED'}
 

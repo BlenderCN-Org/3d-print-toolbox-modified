@@ -52,21 +52,25 @@ class Print3DToolBar:
         info = report.info()
         if info:
             obj = context.edit_object
+            clipboard_items = ['Material Unit Cost:', 'Volume:']
 
             layout.label("Output:")
             box = layout.box()
             col = box.column(align=False)
             # box.alert = True
+
             for i, (text, data) in enumerate(info):
                 if obj and data and data[1]:
                     bm_type, bm_array = data
                     col.operator("mesh.print3d_select_report",
                         text=text,
                         icon=Print3DToolBar._type_to_icon[bm_type]).index = i
-                elif 'Volume:' in text:
+                elif any(item in text for item in clipboard_items):
                     rowsub = col.row(align=True)
                     rowsub.label(text)
-                    rowsub.operator("mesh.print3d_copy_to_clipboard", text="", icon='COPYDOWN').volume = text
+                    rowsub.operator("mesh.print3d_copy_to_clipboard",
+                        text="",
+                        icon='COPYDOWN').text = text
                 else:
                     col.label(text)
 
@@ -109,10 +113,10 @@ class Print3DToolBar:
         layout.separator()
         col = layout.column()
         col.operator("mesh.print3d_check_all",
-            text="CHECK ALL",
-            icon=Print3DToolBar._check_all_icon)
+                    text="CHECK ALL",
+                    icon=Print3DToolBar._check_all_icon)
 
-        # Added mesh clean up operators:
+        # mesh clean up operators:
         layout.separator()
         row = layout.row()
         row.label("Clean up:")
@@ -122,22 +126,30 @@ class Print3DToolBar:
         col = box.column()
         col.operator("mesh.print3d_clean_degenerates",
                      text="Degenerate Dissolve")
-        col = box.column()
         col.operator("mesh.print3d_clean_doubles", text="Remove Doubles")
-        col = box.column()
         col.operator("mesh.print3d_clean_loose", text="Delete Loose")
-        col = box.column()
         col.operator("mesh.print3d_clean_non_planars",
                      text="Split Non Planar Faces")
-        col = box.column()
         col.operator("mesh.print3d_clean_concaves", text="Split Concave Faces")
-        col = box.column()
         col.operator("mesh.print3d_clean_triangulates",
                      text="Triangulate Faces")
-        col = box.column()
         col.operator("mesh.print3d_clean_holes", text="Fill Holes")
-        col = box.column()
         col.operator("mesh.print3d_clean_limited", text="Limited Dissolve")
+        box.separator()
+        layout.separator()
+
+        # material cost operators:
+        layout.separator()
+        row = layout.row()
+        row.label("Material Cost:")
+
+        box = layout.box()
+        row = box.row()
+        col = box.column()
+        col.prop(print_3d, "material_density", text="Density")
+        col.prop(print_3d, "unit_price", text="Unit Price")
+        col = box.column()
+        col.operator("mesh.print3d_calculate_cost", text="Calculate")
         box.separator()
         layout.separator()
 
